@@ -1,4 +1,3 @@
-#import pygetwindow as gw
 import logging
 import os
 import platform
