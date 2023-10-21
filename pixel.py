@@ -1,8 +1,9 @@
 import logging
 import os
 import platform
-import tkinter
+import tkinter as tk
 import pywinctl as pwc
+from PIL import ImageGrab
 
 # Defining root variables
 supportedOs=['Darwin','Windows','Linux']
@@ -21,11 +22,33 @@ logger = logging.getLogger(__name__)
 
 def doStart():
     try:
-        windows=pwc.getAllAppsNames()
-        logger.info(f'list of currently open applications: {windows}')
-        root = tkinter.Tk()
-        root.title("Pixel")
-        root.mainloop()
+        apps=pwc.getAllAppsNames()
+        logger.info(f'list of currently open applications/windows: {apps}')
+        _app=8
+        while not(0 <= _app <= len(apps)+1):
+            print('Please choose which app you want to use pixel with:')
+            for app in apps:
+                print(apps.index(app), app)
+            try:    
+                _app=int(input())
+            except ValueError:
+                print('Please choose a number...\n')
+        app=apps[_app]
+        windows=pwc.getAllAppsWindowsTitles().get(app)
+        print(windows)
+        if len(windows)==1:
+            window=pwc.getWindowsWithTitle(windows[0])
+        else:
+            pass
+        print(type(window[0]))
+        # window=windows[]
+        # print(windows[0].getClientFrame())
+        # windows[0].activate(True)
+        # # root = tk.Tk()
+        # # root.title("Pixel")
+        # # root.mainloop()
+        # screenshot = ImageGrab.grab(bbox=(1233, 317, 2513, 1250))
+        # screenshot.save("screenshot.png")
     except Exception as e:
         logger.error(f"Error: {e}")
 
