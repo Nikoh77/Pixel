@@ -20,6 +20,17 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
+
+def extract_rect(rect_string):
+    rect_string = rect_string.replace("Rect", "").replace("(", "").replace(")", "")
+    values = rect_string.split(',')
+    left_value = int(values[0].split('=')[1])
+    top_value = int(values[1].split('=')[1])
+    right_value = int(values[2].split('=')[1])
+    bottom_value = int(values[3].split('=')[1])
+    return left_value, top_value, right_value, bottom_value
+
 def doStart():
     try:
         apps=pwc.getAllAppsNames()
@@ -34,21 +45,33 @@ def doStart():
             except ValueError:
                 print('Please choose a number...\n')
         app=apps[_app]
-        windows=pwc.getAllAppsWindowsTitles().get(app)
-        print(windows)
-        if len(windows)==1:
-            window=pwc.getWindowsWithTitle(windows[0])
+        wTitles=pwc.getAllAppsWindowsTitles().get(app)
+        if len(wTitles)==1:
+            title=wTitles[0]
+            windows=pwc.getWindowsWithTitle(title)
+            if len(windows)==1:
+                window=windows[0]
+                if not(window.isActive):
+                    activated=window.activate(wait=True)
+                    if activated:
+                        try:
+                            window.alwaysOnTop(True)
+                        except Exception as e:
+                            logger.error(f'error when bringing {window} always on top')
+                    else:
+                        logger.error(f'error activating {window}')
+                        
+            else:
+                pass
         else:
             pass
-        print(type(window[0]))
-        # window=windows[]
-        # print(windows[0].getClientFrame())
-        # windows[0].activate(True)
+        rect_string=str(window.getClientFrame())
+        data=extract_rect(rect_string)
         # # root = tk.Tk()
         # # root.title("Pixel")
         # # root.mainloop()
-        # screenshot = ImageGrab.grab(bbox=(1233, 317, 2513, 1250))
-        # screenshot.save("screenshot.png")
+        screenshot = ImageGrab.grab(bbox=data)
+        screenshot.save("screenshot.png")
     except Exception as e:
         logger.error(f"Error: {e}")
 
