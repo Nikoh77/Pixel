@@ -51,55 +51,58 @@ def buildSettings(data):
             variable_name = variable_name.replace('-', '_')
             globals()[variable_name] = sub_value
 
+def whichWindow():
+    try:
+        apps=pwc.getAllAppsNames()
+        logger.info(f'list of currently open applications/windows: {apps}')
+        myApp=-1
+        while not(0 <= myApp <= len(apps)+1):
+            print('Please choose which app you want to use with Pixel:')
+            for app in apps:
+                print(apps.index(app), app)
+            try:    
+                myApp=int(input())
+            except ValueError:
+                print('Please choose a number...\n')
+        app=apps[myApp]
+        wTitles=pwc.getAllAppsWindowsTitles().get(app)
+        if len(wTitles)==1:
+            title=wTitles[0]
+            windows=pwc.getWindowsWithTitle(title)
+            if len(windows)==1:
+                window=windows[0]
+                if not(window.isActive):
+                    activated=window.activate(wait=True)
+                    if activated:
+                        rectString=str(window.getClientFrame())
+                        try:
+                            window.alwaysOnTop(True)
+                        except Exception as e:
+                            logger.error(f'error when bringing {window} always on top')
+                        return rectString
+                    else:
+                        logger.error(f'error activating {window}')
+            else:
+                pass
+        else:
+            pass
+    except Exception as e:
+        logger.error(f"Error: {e}")
+
 def doStart():
     iniResult=ini_check.iniCheck(configNeed,configFile)
     if iniResult:
         buildSettings(ini_check.settings)
-        try:
-            apps=pwc.getAllAppsNames()
-            logger.info(f'list of currently open applications/windows: {apps}')
-            _app=8
-            while not(0 <= _app <= len(apps)+1):
-                print('Please choose which app you want to use pixel with:')
-                for app in apps:
-                    print(apps.index(app), app)
-                try:    
-                    _app=int(input())
-                except ValueError:
-                    print('Please choose a number...\n')
-            app=apps[_app]
-            wTitles=pwc.getAllAppsWindowsTitles().get(app)
-            if len(wTitles)==1:
-                title=wTitles[0]
-                windows=pwc.getWindowsWithTitle(title)
-                if len(windows)==1:
-                    window=windows[0]
-                    if not(window.isActive):
-                        activated=window.activate(wait=True)
-                        # if activated:
-                        #     try:
-                        #         window.alwaysOnTop(True)
-                        #     except Exception as e:
-                        #         logger.error(f'error when bringing {window} always on top')
-                        # else:
-                        #     logger.error(f'error activating {window}')
-                else:
-                    pass
-            else:
-                pass
-            rect_string=str(window.getClientFrame())
-            data=extractImageRect(rect_string)
-            # # root = tk.Tk()
-            # # root.title("Pixel")
-            # # root.mainloop()
-            screenshot = ImageGrab.grab(bbox=data)
-            #screenshot.save("screenshot.png")
-            toTranslate=pytesseract.image_to_string(image=screenshot, lang='ita')
-            doTranslate(toTranslate)
-        except Exception as e:
-            logger.error(f"Error: {e}")
+        rectString=whichWindow()
+        data=extractImageRect(rectString)
+        # root = tk.Tk()
+        # root.title("Pixel")
+        # root.mainloop()
+        screenshot = ImageGrab.grab(bbox=data)
+        # screenshot.save("screenshot.png")
+        toTranslate=pytesseract.image_to_string(image=screenshot, lang='ita')
+        doTranslate(toTranslate)
 
-        
 def main():
     if os_name in supportedOs:
         doStart()
