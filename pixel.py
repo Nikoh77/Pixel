@@ -13,7 +13,7 @@ supportedOs=['Darwin','Windows','Linux']
 os_name=platform.system()
 user_name = os.getlogin()
 configFile='config.ini'
-configNeed = {'DeepL':['api_key'],'TEST':['api_key','group_key']}
+configNeed = {'transProvider':['brand','api_key'],'TEST':['api_key','group_key']}
 
 # Start logging
 logging.basicConfig(
@@ -23,15 +23,17 @@ logging.basicConfig(
 )
 #logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
+logging.getLogger('deepl').setLevel(logging.DEBUG)
+logging.getLogger('__main__').setLevel(logging.DEBUG)
 
 def doTranslate(data):
-    translator = deepl.Translator(DeepLapi_key)
+    print(transProvider_api_key)
+    translator = deepl.Translator(transProvider_api_key, send_platform_info=False)
     try:
         result = translator.translate_text("Hello, world!", target_lang="IT")
         print(result.text)
     except deepl.exceptions.AuthorizationException:
         logger.error('DeepL API authorization failed')
-
 
 def extractImageRect(rect_string):
     rect_string = rect_string.replace("Rect", "").replace("(", "").replace(")", "")
@@ -44,11 +46,11 @@ def extractImageRect(rect_string):
 
 def buildSettings(data):
     for key, value in data.items():
-        variable_name = key
         for sub_key, sub_value in value.items():
-            variable_name += sub_key
+            variable_name = f'{key}_{sub_key}'
             variable_name = variable_name.replace(' ', '_')
             variable_name = variable_name.replace('-', '_')
+            logger.debug(f'Assigning global variable {variable_name}...')
             globals()[variable_name] = sub_value
 
 def whichWindow():

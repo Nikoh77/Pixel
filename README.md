@@ -33,6 +33,10 @@ Translations are powered by the Google Translate API through the googletrans lib
 
 Pixel is built in Python, making it a versatile choice for various platforms.
 
+## The Main Goal
+
+The main goal is to bring this technology to MiSTer fpga and future fpga-based retrogaming platforms
+
 Contributing
 Contributions to Pixel are highly encouraged. Feel free to submit bug reports, feature requests, or pull requests to help enhance this project.
 

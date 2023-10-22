@@ -1,4 +1,4 @@
-#This module is needed by the main and takes care of the control and generation of the ShinotifyTB configuration file through input requests.
+#This module is needed by the main and takes care of the control and generation of the configuration file through input requests.
 
 import configparser
 import logging
