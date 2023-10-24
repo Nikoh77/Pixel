@@ -119,7 +119,16 @@ def winWatchDog(window, interval):
     except Exception as e:
         logger.critical(f'Error starting window watchdog: {e}')
         return
-    
+
+def doOCR(image):
+    try:
+        text=pytesseract.image_to_string(image=screenshot, lang='ita')
+        logger.debug('Successfully recognized text...')
+        return text
+    except FileNotFoundError:
+        logger.error('Error finding OCR bin')
+        return
+
 def doStart():
     if not ini_check.iniCheck(configNeed,configFile):
         return False
@@ -146,8 +155,8 @@ def mainLoop(window):
     while window.watchdog.isAlive():
         screenshot = ImageGrab.grab(bbox=window.bbox)
         screenshot.save("screenshot.png")
+        doOCR(screenshot)
         toTranslate=pytesseract.image_to_string(image=screenshot, lang='ita')
-        print(toTranslate)
         time.sleep(5)
     return
 
