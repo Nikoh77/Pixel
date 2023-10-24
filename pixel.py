@@ -7,24 +7,39 @@ from PIL import Image, ImageGrab
 import pytesseract
 import deepl
 import ini_check
+import time
 
 # Defining root variables
 supportedOs=['Darwin','Windows','Linux']
 os_name=platform.system()
 user_name = os.getlogin()
 configFile='config.ini'
-configNeed = {'transProvider':['brand','api_key'],'TEST':['api_key','group_key']}
+configNeed = {'transProvider':['brand','api_key'],'pixel':['data1','data2']}
+logLevel='debug'
+winWatchDogInterval=None
 
-# Start logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-#logging.getLogger("httpx").setLevel(logging.WARNING)
-logger = logging.getLogger(__name__)
-logging.getLogger('deepl').setLevel(logging.DEBUG)
-logging.getLogger('__main__').setLevel(logging.DEBUG)
+def doLog():
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO,
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    global logger
+    logger=logging.getLogger(__name__)
+    # logging.getLogger('deepl').setLevel(logging.DEBUG)
+    # logging.getLogger('__main__').setLevel(logging.DEBUG)
+    if logLevel == 'debug':
+        return logging.DEBUG
+    if logLevel == 'info':
+        return logging.INFO
+    elif logLevel == 'warning':
+        return logging.WARNING
+    elif logLevel == 'error':
+        return logging.ERROR
+    elif logLevel == 'critical':
+        return logging.CRITICAL
+    else:
+        return logging.INFO  # default level
 
 def doTranslate(data):
     print(transProvider_api_key)
@@ -34,15 +49,6 @@ def doTranslate(data):
         print(result.text)
     except deepl.exceptions.AuthorizationException:
         logger.error('DeepL API authorization failed')
-
-def extractImageRect(rect_string):
-    rect_string = rect_string.replace("Rect", "").replace("(", "").replace(")", "")
-    values = rect_string.split(',')
-    left_value = int(values[0].split('=')[1])
-    top_value = int(values[1].split('=')[1])
-    right_value = int(values[2].split('=')[1])
-    bottom_value = int(values[3].split('=')[1])
-    return left_value, top_value, right_value, bottom_value
 
 def buildSettings(data):
     for key, value in data.items():
@@ -56,7 +62,7 @@ def buildSettings(data):
 def whichWindow():
     try:
         apps=pwc.getAllAppsNames()
-        logger.info(f'list of currently open applications/windows: {apps}')
+        logger.debug(f'list of currently open applications/windows: {apps}')
         myApp=-1
         while not(0 <= myApp <= len(apps)+1):
             print('Please choose which app you want to use with Pixel:')
@@ -76,41 +82,85 @@ def whichWindow():
                 if not(window.isActive):
                     activated=window.activate(wait=True)
                     if activated:
-                        rectString=str(window.getClientFrame())
+                        logger.info(f'window {window.title} activated')
                         try:
                             window.alwaysOnTop(True)
                         except Exception as e:
-                            logger.error(f'error when bringing {window} always on top')
-                        return rectString
+                            logger.error(f'error when bringing {window.title} always on top')
+                        return window
                     else:
-                        logger.error(f'error activating {window}')
+                        logger.error(f'error activating {window.title}')
+                        return
             else:
-                pass
+                logger.error('error1')
+                return
         else:
-            pass
+            logger.error('error2')
+            return
     except Exception as e:
         logger.error(f"Error: {e}")
 
+def activeCB(active):
+    print("NEW ACTIVE STATUS", active)
+
+def movedCB(pos):
+    print("NEW POS", pos)
+
+def winWatchDog(window, interval):
+    movedTestCB=lambda pos: print(window.bbox)
+    try:
+        window.watchdog.start(isActiveCB=activeCB, movedCB=movedTestCB)
+        if os_name=='Darwin':
+            window.watchdog.setTryToFind=True
+        if interval!=None:
+            window.watchdog.updateInterval(interval)
+        logger.debug('Window watchdog started')
+        return window
+    except Exception as e:
+        logger.critical(f'Error starting window watchdog: {e}')
+        return
+    
 def doStart():
-    iniResult=ini_check.iniCheck(configNeed,configFile)
-    if iniResult:
-        buildSettings(ini_check.settings)
-        rectString=whichWindow()
-        data=extractImageRect(rectString)
-        # root = tk.Tk()
-        # root.title("Pixel")
-        # root.mainloop()
-        screenshot = ImageGrab.grab(bbox=data)
-        # screenshot.save("screenshot.png")
+    if not ini_check.iniCheck(configNeed,configFile):
+        return False
+    buildSettings(ini_check.settings)
+    if os_name not in supportedOs:
+        logger.critical(f'{os_name} usupported OS')
+        return False
+    logger.debug(f'{os_name} OS detected')
+    window=whichWindow()
+    if window==None:
+        print('nessuna finestra')
+        return False
+    if winWatchDog(window,winWatchDogInterval):
+        return window
+    return False
+
+    # root = tk.Tk()
+    # root.title("Pixel")
+    # root.mainloop()
+    # toTranslate=pytesseract.image_to_string(image=screenshot, lang='ita')
+    # doTranslate(toTranslate)
+
+def mainLoop(window):
+    while window.watchdog.isAlive():
+        screenshot = ImageGrab.grab(bbox=window.bbox)
+        screenshot.save("screenshot.png")
         toTranslate=pytesseract.image_to_string(image=screenshot, lang='ita')
-        doTranslate(toTranslate)
+        print(toTranslate)
+        time.sleep(5)
+    return
 
 def main():
-    if os_name in supportedOs:
-        doStart()
+    logging.getLogger().setLevel(doLog())
+    startedWindow=doStart()
+    if startedWindow!=None:
+        logger.info('Application started')
+        mainLoop(startedWindow)
     else:
-        logger.info('unsupported platform/OS')
+        logger.info('Failed to start application')
         return
+    logger.info('Application terminated')
     
 if __name__ == '__main__':
     main()

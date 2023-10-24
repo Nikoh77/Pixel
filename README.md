@@ -1,5 +1,7 @@
 # Pixel - Retro Gaming Translation Made Easy
 
+Pixel is currently not working, is a work in progress project...
+
 Pixel is an intuitive and versatile Python application designed to facilitate real-time text translation for retro video games. As an overlay layer for screen-rendered images, Pixel effectively bridges language barriers, allowing gamers to fully enjoy classic titles originally released in languages like Japanese by providing on-the-fly translations into their preferred language. Whether you're an emulation enthusiast or simply a retro gaming fan, Pixel offers an immersive gaming experience that ensures you never miss a beat, even when navigating in-game text in a foreign language.
 
 ## Key Features
@@ -29,7 +31,7 @@ Running the Application: Execute the main script to launch Pixel and embark on y
 Technical Details
 Pixel utilizes Tesseract for text extraction from screen-rendered images, ensuring precise and reliable recognition.
 
-Translations are powered by the Google Translate API through the googletrans library, offering a wide range of automatic language options.
+Translations are powered by providers like Google, DeepL etc. etc. throug theirs API, offering a wide range of automatic language options.
 
 Pixel is built in Python, making it a versatile choice for various platforms.
 
