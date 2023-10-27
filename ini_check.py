@@ -1,19 +1,10 @@
 #This module is needed by the main and takes care of the control and generation of the configuration file through input requests.
 
 import configparser
-import logging
 
 settings={}
 
-# Start logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
-
-def iniCheck(needed,config_file):
+def iniCheck(needed,config_file,logger):
     config = configparser.ConfigParser(inline_comment_prefixes=('#', ';'), comment_prefixes=('#', ';'), empty_lines_in_values=False, allow_no_value=False)
     config.read(config_file)
     for section in needed:
@@ -45,3 +36,5 @@ def iniCheck(needed,config_file):
         return True
     else:
         return False
+if __name__ == '__main__':
+    raise SystemExit
