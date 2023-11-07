@@ -1,7 +1,11 @@
 import logging
 import os
 import platform
-import tkinter as tk
+import subprocess
+import sys
+from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPalette, QColor, QBrush, QPainter, QPen
 import pywinctl as pwc
 from PIL import Image, ImageGrab
 import pytesseract
@@ -11,6 +15,7 @@ import time
 import cv2
 import inspect
 import threading
+import colorlog
 
 def defGlobals(): # Defining root variables
     global_dict={'supportedOs':['Darwin','Windows','Linux'],
@@ -20,19 +25,34 @@ def defGlobals(): # Defining root variables
         'configNeed':{'transProvider':['brand','api_key'],'pixel':['data1','data2']},
         'logLevel':'debug',
         'winWatchDogInterval':None,
-        'pixelWorkMode':'selection'}
+        'pixelWorkMode':'selection',
+        'timestamp':time.time()
+        }
     for var, value in global_dict.items():
         globals()[var] = value
         logger.debug(f'Assigning global variable {var} from {inspect.currentframe().f_code.co_name}')
-    
+
 def doLog():
-    logging.basicConfig(
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+    formatter = colorlog.ColoredFormatter(
+	"%(log_color)s[%(levelname)-8s] %(blue)s %(asctime)s %(name)s %(reset)s %(message)s",
+	datefmt='%Y-%m-%d %H:%M:%S',
+	reset=True,
+	log_colors={
+		'DEBUG':    'cyan',
+		'INFO':     'green',
+		'WARNING':  'yellow',
+		'ERROR':    'bold_red',
+		'CRITICAL': 'bold_red,bg_white',
+	},
+	secondary_log_colors={},
+	style='%'
     )
+    handler = colorlog.StreamHandler()
+    handler.setFormatter(formatter)
     global logger
-    logger=logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
+    logger = colorlog.getLogger(__name__)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 def doTranslate(text):
     translator=deepl.Translator(transProvider_api_key, send_platform_info=False)
@@ -74,51 +94,49 @@ def whichWindow():
             windows=pwc.getWindowsWithTitle(title)
             if len(windows)==1:
                 window=windows[0]
-                if not(window.isActive):
-                    activated=window.activate(wait=True)
-                    if activated:
-                        logger.info(f'window {window.title} activated')
-                        try:
-                            window.alwaysOnTop(True)
-                        except Exception as e:
-                            logger.error(f'error when bringing {window.title} always on top')
-                        return window
-                    else:
-                        logger.error(f'error activating {window.title}')
-                        return
+                # if not(window.isActive):
+                #     activated=window.activate(wait=True)
+                #     if activated:
+                #         logger.info(f'window {window.title} activated')
+                #         try:
+                #             window.alwaysOnTop(True)
+                #         except Exception as e:
+                #             logger.error(f'error when bringing {window.title} always on top')
+                global appWindow
+                appWindow=window
+                logger.debug('Application window was chosen')
+                return True
+                    # else:
+                    #     logger.error(f'error activating {window.title}')
+                    #     return False
             else:
                 logger.error('error1')
-                return
+                return False
         else:
-            logger.error('error2')
-            return
+            logger.error('the selected app has more than one window')
+            return False
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Error choosing the application window: {e}")
+        return False
 
-def movedCB(pos):
-    x=pos[0]
-    y=pos[1]
-    tkRoot.geometry(f'+{x}+{y}')
+def isVisibleCB(visible):
+    if not visible:
+        qtWindow.hide()
+    else:
+        qtWindow.show()
 
-def resizedCB(edges):
-    height=edges[0]
-    length=edges[1]
-    tkRoot.geometry(f'{height}x{length}')
-
-def winWatchDog(window, interval):
-    # movedCB=lambda pos: logger.info(f'moved: {window.bbox}')
-    # resizedCB=lambda size: logger.info(f'resized: {window.bbox}')
+def winWatchDog(interval=None):
     try:
-        window.watchdog.start(resizedCB=resizedCB, movedCB=movedCB)
+        appWindow.watchdog.start(resizedCB=drawGhostWindow, movedCB=drawGhostWindow, isVisibleCB=isVisibleCB)
         if os_name=='Darwin':
-            window.watchdog.setTryToFind=True
+            appWindow.watchdog.setTryToFind=True
         if interval!=None:
-            window.watchdog.updateInterval(interval)
+            appWindow.watchdog.updateInterval(interval)
         logger.debug('Window watchdog started')
-        return window
+        return True
     except Exception as e:
         logger.critical(f'Error starting window watchdog: {e}')
-        return
+        return False
 
 def doOCR(image,psm=None):
     try:
@@ -135,23 +153,58 @@ def doOCR(image,psm=None):
         logger.error('Error finding OCR bin')
         return
 
-def ghostWindow():
-    global tkRoot
-    tkRoot = tk.Tk()
-    tkRoot.title('Pixel')
-    tkRoot.resizable(False, False)
-    tkRoot.overrideredirect(True)
-    tkRoot.wait_visibility(tkRoot)
-    tkRoot.attributes('-alpha', 0.4)
-    # left, top, right, bottom = window.bbox
-    # width = right - left
-    # height = bottom - top
-    # tkRoot.geometry(f"{width}x{height}+{left}+{top}")
-    tkRoot.mainloop()
+def drawGhostWindow(data=None): # data is mandatory to watchdog
+    global timestamp
+    if (round(time.time())-round(timestamp))<2:
+        print('minore di 2 secondi')
+        timestamp=time.time()
+        return
+    print('ok')
+    timestamp=time.time()
+    left, top, right, bottom = appWindow.bbox
+    if left<0:
+        width=right
+    else:
+        width=right-left
+    if right>resolution.get('width'):
+        width=resolution.get('width')-left
+    if bottom>resolution.get('height'):
+        height=resolution.get('height')-top
+    else:
+        height=bottom-top
+    qtWindow.setGeometry(left,top,width,height)
+    qtWindow.show()
+    
+def defineGhostWindow():
+    global qtWindow
+    qtWindow = customWindow()
+    qtWindow.setAttribute(Qt.WA_NoSystemBackground, True)
+    qtWindow.setAttribute(Qt.WA_TranslucentBackground, True)
+    qtWindow.setWindowFlags(qtWindow.windowFlags() | Qt.FramelessWindowHint)
+    global resolution
+    size=app.primaryScreen().size().toTuple()
+    resolution={'width':size[0],'height':size[1]}
+    drawGhostWindow()
+        
+class customWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('Pixel ghost window')
+    def paintEvent(self, event=None):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setOpacity(0.5)
+        painter.setBrush(Qt.white)
+        painter.setPen(QPen(Qt.white))   
+        painter.drawRect(self.rect())
 
-def mainLoop(window):
-    while window.watchdog.isAlive():
-        print('ok')
+def pixelMainLoop():
+    while True:
+        # if not appWindow.watchdog.isAlive():
+    # while tkRoot.winfo_exists():
+            # print(appWindow.watchdog.isAlive())
+            # break
+        print('i am waiting...')
         # screenshot = ImageGrab.grab(bbox=window.bbox)4
         
         # screenshot.save("screenshot.png")
@@ -177,8 +230,9 @@ def mainLoop(window):
         # if translation==None:
         #     logger.info('no translation for this text')
         # print(translation)
-        time.sleep(5)
-    return
+        time.sleep(10)
+        tkRoot.quit()
+        break
 
 def doStart():
     if not ini_check.iniCheck(configNeed,configFile,logger):
@@ -189,13 +243,13 @@ def doStart():
         logger.critical(f'{os_name} usupported OS')
         return False
     logger.debug(f'{os_name} OS detected')
-    window=whichWindow()
-    if window==None:
-        logger.error('no window selected')
+    if not whichWindow():
         return False
-    if winWatchDog(window,winWatchDogInterval):
-        return window
-    return False
+    if not winWatchDog(winWatchDogInterval):
+        return False
+    global app
+    app = QApplication()
+    return True
 
 def main():
     doLog()
@@ -203,17 +257,19 @@ def main():
     if logLevel!=('' and None):
         logger.info(f'switching from {logging.getLevelName(logger.level)} level to {logLevel.upper()}')
         logger.setLevel(logLevel.upper())
-    startedWindow=doStart()
-    if startedWindow==None:
+    if not doStart():
         logger.error('Failed to start application')
         return
     logger.info('Application started')
-    thread_gui = threading.Thread(target=ghostWindow)
-    thread_gui.start()
-    mainLoop(startedWindow)
-
-    logger.critical('Application terminated')
-
+    # pixelThread = threading.Thread(target=pixelMainLoop)
+    # pixelThread.start()
+    defineGhostWindow()
+    # logger.critical('Application terminated')
+    # tkRoot.destroy()
+    # return
+    # sys.exit(app.exec())
+    app.exec()
     
 if __name__ == '__main__':
     main()
+    print('terminated')
