@@ -4,7 +4,7 @@ import platform
 import subprocess
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QPalette, QColor, QBrush, QPainter, QPen
 import pywinctl as pwc
 from PIL import Image, ImageGrab
@@ -26,7 +26,7 @@ def defGlobals(): # Defining root variables
         'logLevel':'debug',
         'winWatchDogInterval':None,
         'pixelWorkMode':'selection',
-        'timestamp':time.time()
+        'timer':1
         }
     for var, value in global_dict.items():
         globals()[var] = value
@@ -154,13 +154,20 @@ def doOCR(image,psm=None):
         return
 
 def drawGhostWindow(data=None): # data is mandatory to watchdog
-    global timestamp
-    if (round(time.time())-round(timestamp))<2:
-        print('minore di 2 secondi')
-        timestamp=time.time()
-        return
-    print('ok')
-    timestamp=time.time()
+    # if data!=None:
+    #     logger.debug('Redrawing ghost window after moved or resized main window')
+    #     qtWindow.hide()
+    #     time.sleep(timer)
+    #     print('timer raggiunto')
+    #     # global timestamp
+    #     # if (round(time.time())-round(timestamp))<2:
+    #     #     print('minore di 2 secondi')
+    #     #     timestamp=time.time()
+    #     #     qtWindow.hide()
+        
+    # else:
+    #     logger.debug('Drawing ghost window for first time')
+    # timestamp=time.time()
     left, top, right, bottom = appWindow.bbox
     if left<0:
         width=right
@@ -190,6 +197,9 @@ class customWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Pixel ghost window')
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.showWindow)
+        
     def paintEvent(self, event=None):
         super().paintEvent(event)
         painter = QPainter(self)
@@ -197,6 +207,14 @@ class customWindow(QMainWindow):
         painter.setBrush(Qt.white)
         painter.setPen(QPen(Qt.white))   
         painter.drawRect(self.rect())
+        
+    def moveEvent(self, event):
+        self.hide()
+        self.timer.start(1000)
+        
+    def showWindow(self):
+        self.show()
+        self.timer.stop()
 
 def pixelMainLoop():
     while True:
