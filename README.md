@@ -49,7 +49,7 @@ Get ready to rediscover your favorite retro games in a whole new way with Pixel!
 
 ### Please don't open an issue for help or understanding requests, that's what our discord server is for:
 
-[![Discord Banner 2](https://discordapp.com/api/guilds/1054369396396675083/widget.png?style=banner2)](https://discord.gg/x7HQqDWmvw)
+[![Discord Banner 2](https://discordapp.com/api/guilds/832988340122288158/widget.png?style=banner2)](https://discord.gg/x7HQqDWmvw)
 
 ## License
 This work is dual-licensed under:
