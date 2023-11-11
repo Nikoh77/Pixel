@@ -47,4 +47,17 @@ Pixel is open-source software released under the Affero General Public License v
 
 Get ready to rediscover your favorite retro games in a whole new way with Pixel! Enjoy gaming in any language without the language barrier.
 
+### Please don't open an issue for help or understanding requests, that's what our discord server is for:
+
+[![Discord Banner 2](https://discordapp.com/api/guilds/1054369396396675083/widget.png?style=banner2)](https://discord.gg/x7HQqDWmvw)
+
+## License
+This work is dual-licensed under:
+
+- GNU GENERAL PUBLIC LICENSE (Version 3, 29 June 2007)
+- GNU AFFERO GENERAL PUBLIC LICENSE (Version 3, 19 November 2007)
+
+If you do not allow connections and you use these applications or their code where they are after downloading them, the GPL3 applies but, if the use involves someone connecting to the application servers and then using these applications or their code without distributing it the AGPL3 applies!
+
+
 
