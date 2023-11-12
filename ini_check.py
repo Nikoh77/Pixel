@@ -4,7 +4,7 @@ import configparser
 
 settings={}
 
-def iniCheck(needed,config_file,logger):
+def iniCheck(needed, config_file, logger):
     config = configparser.ConfigParser(inline_comment_prefixes=('#', ';'), comment_prefixes=('#', ';'), empty_lines_in_values=False, allow_no_value=False)
     config.read(config_file)
     for section in needed:
@@ -36,5 +36,3 @@ def iniCheck(needed,config_file,logger):
         return True
     else:
         return False
-if __name__ == '__main__':
-    raise SystemExit

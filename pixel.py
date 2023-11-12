@@ -3,21 +3,23 @@ import os
 import platform
 import subprocess
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import Qt, QEvent, QTimer
-from PySide6.QtGui import QPalette, QColor, QBrush, QPainter, QPen
+from PySide6.QtWidgets import QApplication
 import pywinctl as pwc
 from PIL import Image, ImageGrab
 import pytesseract
 import deepl
 import ini_check
-import time
+from ghost_window import customWindow
 import cv2
 import inspect
 import threading
 import colorlog
+from timer import Timer
 
-def defGlobals(): # Defining root variables
+def defGlobals():
+    """
+    Defining root variables
+    """
     global_dict={'supportedOs':['Darwin','Windows','Linux'],
         'os_name':platform.system(),
         'user_name':os.getlogin(),
@@ -75,6 +77,9 @@ def buildSettings(data):
             globals()[variable_name] = sub_value
 
 def whichWindow():
+    """
+    In this function, active windows on the desktop are searched and listed for the user to choose which one Pixel should operate on.
+    """
     try:
         apps=pwc.getAllAppsNames()
         logger.debug(f'list of currently open applications/windows: {apps}')
@@ -125,9 +130,20 @@ def isVisibleCB(visible):
     else:
         qtWindow.show()
 
+def wWDCallback(data):
+    if redrawTimer.is_running:
+        logger.debug('timer thread running')
+        redrawTimer.reset()
+    else:
+        logger.debug('timer thread NOT running')
+        qtWindow.hide()
+        redrawTimer.start()
+
 def winWatchDog(interval=None):
+    global redrawTimer
+    redrawTimer=Timer(callback=drawGhostWindow, logger=logger)
     try:
-        appWindow.watchdog.start(resizedCB=drawGhostWindow, movedCB=drawGhostWindow, isVisibleCB=isVisibleCB)
+        appWindow.watchdog.start(movedCB=wWDCallback, resizedCB=wWDCallback, isVisibleCB=isVisibleCB)
         if os_name=='Darwin':
             appWindow.watchdog.setTryToFind=True
         if interval!=None:
@@ -153,68 +169,32 @@ def doOCR(image,psm=None):
         logger.error('Error finding OCR bin')
         return
 
-def drawGhostWindow(data=None): # data is mandatory to watchdog
-    # if data!=None:
-    #     logger.debug('Redrawing ghost window after moved or resized main window')
-    #     qtWindow.hide()
-    #     time.sleep(timer)
-    #     print('timer raggiunto')
-    #     # global timestamp
-    #     # if (round(time.time())-round(timestamp))<2:
-    #     #     print('minore di 2 secondi')
-    #     #     timestamp=time.time()
-    #     #     qtWindow.hide()
-        
-    # else:
-    #     logger.debug('Drawing ghost window for first time')
-    # timestamp=time.time()
-    left, top, right, bottom = appWindow.bbox
-    if left<0:
-        width=right
-    else:
-        width=right-left
-    if right>resolution.get('width'):
-        width=resolution.get('width')-left
-    if bottom>resolution.get('height'):
-        height=resolution.get('height')-top
-    else:
-        height=bottom-top
-    qtWindow.setGeometry(left,top,width,height)
-    qtWindow.show()
-    
+def drawGhostWindow(redraw=False): # data is mandatory to watchdog
+        left, top, right, bottom = appWindow.bbox
+        if left<0:
+            width=right
+        else:
+            width=right-left
+        if right>resolution.get('width'):
+            width=resolution.get('width')-left
+        if bottom>resolution.get('height'):
+            height=resolution.get('height')-top
+        else:
+            height=bottom-top
+        qtWindow.setGeometry(left,top,width,height)
+        if redraw:
+            logger.debug('Redrawing ghost window after moving or resizing')
+        else:
+            logger.debug('Drawing ghost window for first time')
+        qtWindow.show()
+
 def defineGhostWindow():
     global qtWindow
     qtWindow = customWindow()
-    qtWindow.setAttribute(Qt.WA_NoSystemBackground, True)
-    qtWindow.setAttribute(Qt.WA_TranslucentBackground, True)
-    qtWindow.setWindowFlags(qtWindow.windowFlags() | Qt.FramelessWindowHint)
     global resolution
     size=app.primaryScreen().size().toTuple()
     resolution={'width':size[0],'height':size[1]}
     drawGhostWindow()
-        
-class customWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle('Pixel ghost window')
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.showWindow)
-        
-    def paintEvent(self, event=None):
-        super().paintEvent(event)
-        painter = QPainter(self)
-        painter.setOpacity(0.5)
-        painter.setBrush(Qt.white)
-        painter.setPen(QPen(Qt.white))   
-        painter.drawRect(self.rect())
-        
-    def moveEvent(self, event):
-        self.hide()
-        self.timer.start(1000)
-        
-    def showWindow(self):
-        self.show()
-        self.timer.stop()
 
 def pixelMainLoop():
     while True:
