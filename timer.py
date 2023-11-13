@@ -6,14 +6,16 @@ class Timer:
     """
     This class object is a simple timer implementation...
     """
-    def __init__(self, seconds: Optional[int] = 1, callback: Optional[Callable] = None, logger: Optional['logging.Logger'] = None):
+    def __init__(self, seconds: Optional[int] = 1, callback: Optional[Callable]
+                = None, logger: Optional['logging.Logger'] = None):
         """
         Constructor of the class.
 
         Arguments:
         - seconds (Optional[int]): The number of seconds. Default is None.
         - callback (Optional[Callable]): The callback function. Default is None.
-        - logger (Optional[logging.Logger]): The logger instance from the `logging` module. Default is None.
+        - logger (Optional[logging.Logger]): The logger instance from the `logging`
+            module. Default is None.
         """
         self.seconds = seconds
         self.callback = callback
@@ -32,9 +34,11 @@ class Timer:
             self.is_running = False
             if self.callback != None:
                 self._tryLogger_("Timer completed!")
-                self.callback(True) # callback with bool to know between drawing and redrawing after moved/resized
+                self.callback(True) #callback with bool to know between drawing and
+                                    # redrawing after moved/resized
             else:
-                self._tryLogger_("timer completed silently, no callback was given.")
+                self._tryLogger_("timer completed silently, no callback was"
+                                "given.")
 
     def start(self):
         """
@@ -72,4 +76,5 @@ class Timer:
         try:
             self.logger.debug(log)
         except Exception as e:
-            print(f'Error writing log: {e} continuing with simple print\n{log}')
+            print(f'Error writing log: {e} '
+                    f'continuing with simple print\n{log}')
