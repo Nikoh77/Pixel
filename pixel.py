@@ -16,6 +16,8 @@ import threading
 import colorlog
 from timer import Timer
 
+#test modifica
+
 def defGlobals():
     """
     Defining root variables
