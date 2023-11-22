@@ -125,3 +125,7 @@ dmypy.json
 
 .vscode/
 config.ini
+pixel.build/
+pixel.dist/
+pixel.onefile-build/
+

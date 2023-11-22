@@ -4,19 +4,17 @@ import platform
 import subprocess
 import sys
 from PySide6.QtWidgets import QApplication
-import pywinctl as pwc
+import pywinctl
 from PIL import Image, ImageGrab
 import pytesseract
 import deepl
 import ini_check
 from ghost_window import customWindow
-import cv2
+# import cv2
 import inspect
 import threading
 import colorlog
 from timer import Timer
-
-#test modifica
 
 def defGlobals():
     """
@@ -24,7 +22,6 @@ def defGlobals():
     """
     global_dict={'supportedOs':['Darwin','Windows','Linux'],
         'os_name':platform.system(),
-        'user_name':os.getlogin(),
         'configFile':'config.ini',
         'configNeed':{'transProvider':['brand','api_key'],'pixel':['data1','data2']},
         'logLevel':'debug',
@@ -80,13 +77,14 @@ def buildSettings(data):
 
 def whichWindow():
     """
-    In this function, active windows on the desktop are searched and listed for the user to choose which one Pixel should operate on.
+    In this function, active windows on the desktop are searched and listed for the user
+    to choose which one Pixel should operate on.
     """
     try:
-        apps=pwc.getAllAppsNames()
-        logger.debug(f'list of currently open applications/windows: {apps}')
+        apps=pywinctl.getAllAppsNames()
+        logger.debug(f'list of currently visible applications/windows: {apps}')
         myApp=-1
-        while not(0 <= myApp <= len(apps)+1):
+        while not(0 <= myApp <= len(apps)-1):
             print('Please choose which app you want to use with Pixel:')
             for app in apps:
                 print(apps.index(app), app)
@@ -95,33 +93,29 @@ def whichWindow():
             except ValueError:
                 print('Please choose a number...\n')
         app=apps[myApp]
-        wTitles=pwc.getAllAppsWindowsTitles().get(app)
+        logger.debug(f'Application was chosen: {app}')
+        wTitles=pywinctl.getAllAppsWindowsTitles().get(app)
         if len(wTitles)==1:
-            title=wTitles[0]
-            windows=pwc.getWindowsWithTitle(title)
-            if len(windows)==1:
-                window=windows[0]
-                # if not(window.isActive):
-                #     activated=window.activate(wait=True)
-                #     if activated:
-                #         logger.info(f'window {window.title} activated')
-                #         try:
-                #             window.alwaysOnTop(True)
-                #         except Exception as e:
-                #             logger.error(f'error when bringing {window.title} always on top')
-                global appWindow
-                appWindow=window
-                logger.debug('Application window was chosen')
-                return True
-                    # else:
-                    #     logger.error(f'error activating {window.title}')
-                    #     return False
-            else:
-                logger.error('error1')
-                return False
+            wTitle=wTitles[0]
         else:
-            logger.error('the selected app has more than one window')
-            return False
+            logger.warning(f'the selected app has more than one window: {wTitles}')
+            myWin=-1
+            while not(0 <= myWin <= len(wTitles)-1):
+                print(f'Please choose which window of {app} you want to use with Pixel:')
+                for wTitle in wTitles:
+                    print(wTitles.index(wTitle), wTitle)
+                try:    
+                    myWin=int(input())
+                except ValueError:
+                    print('Please choose a number...\n')
+            wTitle=wTitles[myWin]
+        global appWindow
+        appWindow=pywinctl.getWindowsWithTitle(wTitle)
+        if len(appWindow)==1:
+            appWindow=appWindow[0]
+            logger.debug(f'Application window was chosen: {appWindow.title}')
+            return True
+        return False
     except Exception as e:
         logger.error(f"Error choosing the application window: {e}")
         return False
@@ -192,7 +186,7 @@ def drawGhostWindow(redraw=False): # data is mandatory to watchdog
 
 def defineGhostWindow():
     global qtWindow
-    qtWindow = customWindow()
+    qtWindow = customWindow(logger=logger)
     global resolution
     size=app.primaryScreen().size().toTuple()
     resolution={'width':size[0],'height':size[1]}

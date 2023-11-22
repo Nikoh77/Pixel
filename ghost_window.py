@@ -16,6 +16,7 @@ class customWindow(QMainWindow):
                 module. Default is None.
         """
         super().__init__()
+        self.logger = logger
         self.setWindowTitle('Pixel ghost window')
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
