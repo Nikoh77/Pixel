@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Literal
 import threading
 import time
 
@@ -34,12 +34,12 @@ class Timer:
             self.is_running = False
             if self.callback != None:
                 self._tryLogger_("Timer completed!")
-                self.callback(True) #callback with bool to know between drawing and
+                self.callback(resolution=None, redraw=True) #callback with bool to know between drawing and
                                     # redrawing after moved/resized
             else:
-                self._tryLogger_("timer completed silently, no callback was"
+                self._tryLogger_("timer completed silently, no callback was "
                                 "given.")
-
+                
     def start(self):
         """
         Start timer.
@@ -72,9 +72,11 @@ class Timer:
         else:
             self._tryLogger_('Error resetting timer, isn\'t runnig')
             
-    def _tryLogger_(self, log: [str]):
+    def _tryLogger_(self, log: str, level: Literal['debug', 'info', 'error'] = 
+                    'debug'):
         try:
-            self.logger.debug(log)
+            log_method = getattr(self.logger, level)
+            log_method(log)
         except Exception as e:
             print(f'Error writing log: {e} '
                     f'continuing with simple print\n{log}')

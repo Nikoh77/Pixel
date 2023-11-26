@@ -3,18 +3,19 @@ import os
 import platform
 import subprocess
 import sys
-from PySide6.QtWidgets import QApplication
-import pywinctl
+# from PySide6.QtWidgets import QApplication
+# import pywinctl
 from PIL import Image, ImageGrab
 import pytesseract
 import deepl
 import ini_check
-from ghost_window import customWindow
+from ghost_window import customWindow, myQtApp
 # import cv2
 import inspect
 import threading
 import colorlog
 from timer import Timer
+from app_window import window
 
 def defGlobals():
     """
@@ -75,56 +76,11 @@ def buildSettings(data):
             logger.debug(f'Assigning global variable {variable_name} from {configFile}')
             globals()[variable_name] = sub_value
 
-def whichWindow():
-    """
-    In this function, active windows on the desktop are searched and listed for the user
-    to choose which one Pixel should operate on.
-    """
-    try:
-        apps=pywinctl.getAllAppsNames()
-        logger.debug(f'list of currently visible applications/windows: {apps}')
-        myApp=-1
-        while not(0 <= myApp <= len(apps)-1):
-            print('Please choose which app you want to use with Pixel:')
-            for app in apps:
-                print(apps.index(app), app)
-            try:    
-                myApp=int(input())
-            except ValueError:
-                print('Please choose a number...\n')
-        app=apps[myApp]
-        logger.debug(f'Application was chosen: {app}')
-        wTitles=pywinctl.getAllAppsWindowsTitles().get(app)
-        if len(wTitles)==1:
-            wTitle=wTitles[0]
-        else:
-            logger.warning(f'the selected app has more than one window: {wTitles}')
-            myWin=-1
-            while not(0 <= myWin <= len(wTitles)-1):
-                print(f'Please choose which window of {app} you want to use with Pixel:')
-                for wTitle in wTitles:
-                    print(wTitles.index(wTitle), wTitle)
-                try:    
-                    myWin=int(input())
-                except ValueError:
-                    print('Please choose a number...\n')
-            wTitle=wTitles[myWin]
-        global appWindow
-        appWindow=pywinctl.getWindowsWithTitle(wTitle)
-        if len(appWindow)==1:
-            appWindow=appWindow[0]
-            logger.debug(f'Application window was chosen: {appWindow.title}')
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"Error choosing the application window: {e}")
-        return False
-
 def isVisibleCB(visible):
     if not visible:
         qtWindow.hide()
     else:
-        qtWindow.show()
+        qtWindow.show()        
 
 def wWDCallback(data):
     if redrawTimer.is_running:
@@ -135,15 +91,15 @@ def wWDCallback(data):
         qtWindow.hide()
         redrawTimer.start()
 
-def winWatchDog(interval=None):
+def winWatchDog(appWindow, overrideInterval=None):
     global redrawTimer
-    redrawTimer=Timer(callback=drawGhostWindow, logger=logger)
+    redrawTimer=Timer(callback=qtWindow.drawGhostWindow, logger=logger)
     try:
         appWindow.watchdog.start(movedCB=wWDCallback, resizedCB=wWDCallback, isVisibleCB=isVisibleCB)
         if os_name=='Darwin':
             appWindow.watchdog.setTryToFind=True
-        if interval!=None:
-            appWindow.watchdog.updateInterval(interval)
+        if overrideInterval!=None:
+            appWindow.watchdog.updateInterval(overrideInterval)
         logger.debug('Window watchdog started')
         return True
     except Exception as e:
@@ -165,40 +121,20 @@ def doOCR(image,psm=None):
         logger.error('Error finding OCR bin')
         return
 
-def drawGhostWindow(redraw=False): # data is mandatory to watchdog
-        left, top, right, bottom = appWindow.bbox
-        if left<0:
-            width=right
-        else:
-            width=right-left
-        if right>resolution.get('width'):
-            width=resolution.get('width')-left
-        if bottom>resolution.get('height'):
-            height=resolution.get('height')-top
-        else:
-            height=bottom-top
-        qtWindow.setGeometry(left,top,width,height)
-        if redraw:
-            logger.debug('Redrawing ghost window after moving or resizing')
-        else:
-            logger.debug('Drawing ghost window for first time')
-        qtWindow.show()
-
-def defineGhostWindow():
+def pixelMainLoop(app):
+    appWindow = window(logger=logger)
+    if appWindow == None:
+        logger.error('Failed to start application')
+        return
     global qtWindow
-    qtWindow = customWindow(logger=logger)
-    global resolution
-    size=app.primaryScreen().size().toTuple()
-    resolution={'width':size[0],'height':size[1]}
-    drawGhostWindow()
+    qtWindow = customWindow(appWindow=appWindow, logger=logger)
+    if not winWatchDog(appWindow=appWindow,
+                        overrideInterval=winWatchDogInterval):
+        logger.error('Failed to start application')
+        return
+    logger.info('Application started')
+    app.exec(appWindow=appWindow)
 
-def pixelMainLoop():
-    while True:
-        # if not appWindow.watchdog.isAlive():
-    # while tkRoot.winfo_exists():
-            # print(appWindow.watchdog.isAlive())
-            # break
-        print('i am waiting...')
         # screenshot = ImageGrab.grab(bbox=window.bbox)4
         
         # screenshot.save("screenshot.png")
@@ -224,26 +160,9 @@ def pixelMainLoop():
         # if translation==None:
         #     logger.info('no translation for this text')
         # print(translation)
-        time.sleep(10)
-        tkRoot.quit()
-        break
-
-def doStart():
-    if not ini_check.iniCheck(configNeed,configFile,logger):
-        logger.critical(f'An error as occured initialising settings')
-        return False
-    buildSettings(ini_check.settings)
-    if os_name not in supportedOs:
-        logger.critical(f'{os_name} usupported OS')
-        return False
-    logger.debug(f'{os_name} OS detected')
-    if not whichWindow():
-        return False
-    if not winWatchDog(winWatchDogInterval):
-        return False
-    global app
-    app = QApplication()
-    return True
+    print('finito')
+    qtWindow.close()
+    pixelMainLoop(app)
 
 def main():
     doLog()
@@ -251,18 +170,18 @@ def main():
     if logLevel!=('' and None):
         logger.info(f'switching from {logging.getLevelName(logger.level)} level to {logLevel.upper()}')
         logger.setLevel(logLevel.upper())
-    if not doStart():
-        logger.error('Failed to start application')
+    if not ini_check.iniCheck(configNeed,configFile,logger):
+        logger.critical(f'An error as occured initialising settings')
         return
-    logger.info('Application started')
-    # pixelThread = threading.Thread(target=pixelMainLoop)
-    # pixelThread.start()
-    defineGhostWindow()
-    # logger.critical('Application terminated')
-    # tkRoot.destroy()
-    # return
+    buildSettings(ini_check.settings)
+    if os_name not in supportedOs:
+        logger.critical(f'{os_name} usupported OS')
+        return
+    logger.debug(f'{os_name} OS detected')
+    app = myQtApp()
+    pixelMainLoop(app)
     # sys.exit(app.exec())
-    app.exec()
+    
     
 if __name__ == '__main__':
     main()

@@ -1,13 +1,35 @@
-from typing import Callable, Optional
-from PySide6.QtWidgets import QMainWindow, QGraphicsRectItem
+from typing import Callable, Optional, Literal
+from PySide6.QtWidgets import QMainWindow, QGraphicsRectItem, QApplication
 from PySide6.QtGui import QPainter, QPen
 from PySide6.QtCore import Qt
+import pywinctl
+
+class myQtApp(QApplication):
+    def __init__(self):
+        super().__init__()
+        global size
+        size=self.primaryScreen().size().toTuple()
+
+    def exec(self, appWindow: pywinctl.Window):
+        while appWindow.watchdog.isAlive():
+            self.processEvents()
+        self._tryLogger_('QApplication terminated')
+        return 0
+    
+    def _tryLogger_(self, log: str, level: Literal['debug', 'info', 'error'] = 
+                    'debug'):
+        try:
+            log_method = getattr(self.logger, level)
+            log_method(log)
+        except Exception as e:
+            print(f'Error writing log: {e} '
+                    f'continuing with simple print\n{log}')
 
 class customWindow(QMainWindow):
     """
     This class object is a custom QMainWindow implementation
     """
-    def __init__(self, logger: Optional['logging.Logger'] = None):
+    def __init__(self, appWindow: pywinctl.Window, logger: Optional['logging.Logger'] = None):
         """
         Constructor of the class.
         
@@ -16,11 +38,13 @@ class customWindow(QMainWindow):
                 module. Default is None.
         """
         super().__init__()
+        self.appWindow = appWindow
         self.logger = logger
         self.setWindowTitle('Pixel ghost window')
         self.setAttribute(Qt.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        self.drawGhostWindow()
         
     def paintEvent(self, event=None):
         super().paintEvent(event)
@@ -50,12 +74,40 @@ class customWindow(QMainWindow):
         self.selectionEndPoint = event.pos()
         self.update()
 
+    def drawGhostWindow(self, resolution = None, redraw = False): # redraw is mandatory 
+        # to watchdog, to know if is first draw or redraw after move
+        # or resize.
+        resolution={'width':size[0],'height':size[1]}
+        left, top, right, bottom = self.appWindow.bbox
+        if left<0:
+            width=right
+        else:
+            width=right-left
+        if right>resolution.get('width'):
+            width=resolution.get('width')-left
+        if bottom>resolution.get('height'):
+            height=resolution.get('height')-top
+        else:
+            height=bottom-top
+        self.setGeometry(left,top,width,height)
+        if redraw:
+            self.logger.debug('Redrawing ghost window after moving or '
+                                f'resizing')
+        else:
+            self.logger.debug('Drawing ghost window for first time')
+        self.show()
+
     # def mouseReleaseEvent(self, event):
     #     self.selectionEndPosition = event.pos()
     #     self.update()
-    def _tryLogger_(self, log: [str]):
+    
+    def _tryLogger_(self, log: str, level: Literal['debug', 'info', 'error'] = 
+                    'debug'):
         try:
-            self.logger.debug(log)
+            log_method = getattr(self.logger, level)
+            log_method(log)
         except Exception as e:
-            print(f'Error writing log: {e} continuing with simple print\n{log}')
+            print(f'Error writing log: {e} '
+                    f'continuing with simple print\n{log}')
+
 
