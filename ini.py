@@ -1,17 +1,22 @@
-#This module is needed by the main and takes care of the control and generation of the configuration file through input requests.
+# This module is needed by the main and takes care of the control and generation of the
+# configuration file through input requests.
 
 import configparser
+import os
 
 settings={}
 
-def iniCheck(needed, config_file, logger):
-    config = configparser.ConfigParser(inline_comment_prefixes=('#', ';'), comment_prefixes=('#', ';'), empty_lines_in_values=False, allow_no_value=False)
+def iniSettingsCheck(options, config_file, logger):
+    config = configparser.ConfigParser(inline_comment_prefixes=('#', ';'), 
+                    comment_prefixes=('#', ';'), empty_lines_in_values=False, 
+                    allow_no_value=False)
     config.read(config_file)
-    for section in needed:
+    for section in options:
         if not config.has_section(section):
-            logger.info(f'Needed section {section} does not existin your INI file, creating...')
+            logger.info(f'Needed section {section} does not existin your INI '
+                        f'file, creating...')
             config.add_section(section)
-        for option in needed[section]:
+        for option in options[section]:
             if config.has_option(section,option):
                 logger.info(f'Ok, {section} {option} found.')
             else:
@@ -28,11 +33,16 @@ def iniCheck(needed, config_file, logger):
         data = {}
         for option, value in options:
             if value!=('' and None):
-                # if option == 'chat_id' and value: # If chat_id (comma separated) are defined
-                #     value = [int(id.strip()) for id in value.split(',')] # I turn them into a list
                 data[option] = value
             settings[section] = data
     if settings:
         return True
     else:
         return False
+
+def iniStructCheck(folders, logger):
+    for folder in folders:
+        if not os.path.exists(folders.get(folder)):
+            os.makedirs(folders.get(folder))
+    logger.info(f'Ok, all folders are in place')
+    return True

@@ -5,10 +5,10 @@ import subprocess
 import sys
 # from PySide6.QtWidgets import QApplication
 # import pywinctl
-from PIL import Image, ImageGrab
+# from PIL import Image, ImageGrab
 import pytesseract
 import deepl
-import ini_check
+from ini import iniSettingsCheck, iniStructCheck, settings
 from ghost_window import customWindow, myQtApp
 # import cv2
 import inspect
@@ -24,7 +24,8 @@ def defGlobals():
     global_dict={'supportedOs':['Darwin','Windows','Linux'],
         'os_name':platform.system(),
         'configFile':'config.ini',
-        'configNeed':{'transProvider':['brand','api_key'],'pixel':['data1','data2']},
+        'settingsNeeded':{'transProvider':['brand','api_key'],'pixel':['data1','data2']},
+        'foldersNeeded':{'screenshots': 'img'},
         'logLevel':'debug',
         'winWatchDogInterval':None,
         'pixelWorkMode':'selection',
@@ -78,9 +79,9 @@ def buildSettings(data):
 
 def isVisibleCB(visible):
     if not visible:
-        qtWindow.hide()
+        ghostWindow.hide()
     else:
-        qtWindow.show()        
+        ghostWindow.show()        
 
 def wWDCallback(data):
     if redrawTimer.is_running:
@@ -88,12 +89,12 @@ def wWDCallback(data):
         redrawTimer.reset()
     else:
         logger.debug('timer thread NOT running')
-        qtWindow.hide()
+        ghostWindow.hide()
         redrawTimer.start()
 
 def winWatchDog(appWindow, overrideInterval=None):
     global redrawTimer
-    redrawTimer=Timer(callback=qtWindow.drawGhostWindow, logger=logger)
+    redrawTimer=Timer(callback=ghostWindow.drawGhostWindow, logger=logger)
     try:
         appWindow.watchdog.start(movedCB=wWDCallback, resizedCB=wWDCallback, isVisibleCB=isVisibleCB)
         if os_name=='Darwin':
@@ -126,8 +127,8 @@ def pixelMainLoop(app):
     if appWindow == None:
         logger.error('Failed to start application')
         return
-    global qtWindow
-    qtWindow = customWindow(appWindow=appWindow, logger=logger)
+    global ghostWindow
+    ghostWindow = customWindow(appWindow=appWindow, screenShotsPath=foldersNeeded.get('screenshots') ,logger=logger)
     if not winWatchDog(appWindow=appWindow,
                         overrideInterval=winWatchDogInterval):
         logger.error('Failed to start application')
@@ -161,7 +162,7 @@ def pixelMainLoop(app):
         #     logger.info('no translation for this text')
         # print(translation)
     print('finito')
-    qtWindow.close()
+    ghostWindow.close()
     pixelMainLoop(app)
 
 def main():
@@ -170,10 +171,10 @@ def main():
     if logLevel!=('' and None):
         logger.info(f'switching from {logging.getLevelName(logger.level)} level to {logLevel.upper()}')
         logger.setLevel(logLevel.upper())
-    if not ini_check.iniCheck(configNeed,configFile,logger):
+    if not (iniSettingsCheck(settingsNeeded,configFile, logger) and iniStructCheck(foldersNeeded, logger)):
         logger.critical(f'An error as occured initialising settings')
         return
-    buildSettings(ini_check.settings)
+    buildSettings(settings)
     if os_name not in supportedOs:
         logger.critical(f'{os_name} usupported OS')
         return

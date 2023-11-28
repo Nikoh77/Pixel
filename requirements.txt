@@ -4,11 +4,9 @@ certifi==2023.11.17
 charset-normalizer==3.3.2
 colorlog==6.7.0
 deepl==1.16.1
-docopt==0.6.2
 idna==3.6
 packaging==23.2
 Pillow==10.1.0
-pipreqs==0.4.13
 PyMonCtl==0.7
 PySide6==6.6.0
 PySide6-Addons==6.6.0
@@ -22,4 +20,3 @@ shiboken6==6.6.0
 six==1.16.0
 typing_extensions==4.8.0
 urllib3==2.1.0
-yarg==0.1.9

@@ -128,4 +128,5 @@ config.ini
 pixel.build/
 pixel.dist/
 pixel.onefile-build/
+img/
 

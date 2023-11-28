@@ -1,8 +1,10 @@
 from typing import Callable, Optional, Literal
 from PySide6.QtWidgets import QMainWindow, QGraphicsRectItem, QApplication
-from PySide6.QtGui import QPainter, QPen
+from PySide6.QtGui import QPainter, QPen, QColor
 from PySide6.QtCore import Qt
 import pywinctl
+from PIL import Image, ImageGrab
+from os import PathLike
 
 class myQtApp(QApplication):
     def __init__(self):
@@ -29,7 +31,7 @@ class customWindow(QMainWindow):
     """
     This class object is a custom QMainWindow implementation
     """
-    def __init__(self, appWindow: pywinctl.Window, logger: Optional['logging.Logger'] = None):
+    def __init__(self, appWindow: pywinctl.Window, screenShotsPath: PathLike, logger: Optional['logging.Logger'] = None):
         """
         Constructor of the class.
         
@@ -39,6 +41,7 @@ class customWindow(QMainWindow):
         """
         super().__init__()
         self.appWindow = appWindow
+        self.screenShotsPath = screenShotsPath
         self.logger = logger
         self.setWindowTitle('Pixel ghost window')
         self.setAttribute(Qt.WA_NoSystemBackground, True)
@@ -50,17 +53,21 @@ class customWindow(QMainWindow):
         super().paintEvent(event)
         painter = QPainter(self)
         painter.setOpacity(0.5)
-        painter.setBrush(Qt.white)
-        painter.setPen(QPen(Qt.white))   
+        painter.setBrush(Qt.black)
+        painter.setPen(QPen(Qt.white))
         painter.drawRect(self.rect())
+        
         if hasattr(self, 'selectionStarPoint') and hasattr(self,
                     'selectionEndPoint'):
-            x=self.selectionStarPoint.x()
-            y=self.selectionStarPoint.y()
+            x = self.selectionStarPoint.x()
+            y = self.selectionStarPoint.y()
+            # top = self.selectionEndPoint.x()
+            # bottom = self.selectionEndPoint.y()
             width = self.selectionEndPoint.x()-x
             height = self.selectionEndPoint.y()-y
-            print(x, y, width, height)
+            painter.setCompositionMode(QPainter.CompositionMode_Clear)
             painter.drawRect(x, y, width, height)
+            painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
             painter.end()
         else:
             self._tryLogger_('...no selection rect has been defined yet...')
@@ -69,10 +76,29 @@ class customWindow(QMainWindow):
         if event.button() == Qt.LeftButton:
             self.selectionStarPoint = event.pos()
             self.update()
-            
+    
+    def mouseReleaseEvent(self, event):
+        left = self.geometry().x()+self.selectionStarPoint.x()
+        top = self.geometry().y()+self.selectionStarPoint.y()
+        right = self.geometry().x()+self.selectionEndPoint.x()
+        bottom = self.geometry().y()+self.selectionEndPoint.y()
+        bbox = left, top, right, bottom
+        screenshot = ImageGrab.grab(bbox)
+        screenshot.save(f"{self.screenShotsPath}/screenshot.png")
+        screenshot.show()
+        
     def mouseMoveEvent(self, event):
         self.selectionEndPoint = event.pos()
         self.update()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_H:
+            if self.isVisible():
+                self.showMinimized()
+            else:
+                self.show()
+        else:
+            pass
 
     def drawGhostWindow(self, resolution = None, redraw = False): # redraw is mandatory 
         # to watchdog, to know if is first draw or redraw after move
