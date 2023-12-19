@@ -124,6 +124,7 @@ dmypy.json
 .pyre/
 
 .vscode/
+.idea/
 config.ini
 pixel.build/
 pixel.dist/

@@ -1,13 +1,15 @@
 from typing import Callable, Optional, Literal
+import logging
 import threading
 import time
 
-class Timer:
+
+class Timer():
     """
     This class object is a simple timer implementation...
     """
-    def __init__(self, seconds: Optional[int] = 1, callback: Optional[Callable]
-                = None, logger: Optional['logging.Logger'] = None):
+    def __init__(self, seconds: int = 1, callback: Optional[Callable]
+                 = None, logger: Optional['logging.Logger'] = None) -> None:
         """
         Constructor of the class.
 
@@ -17,28 +19,27 @@ class Timer:
         - logger (Optional[logging.Logger]): The logger instance from the `logging`
             module. Default is None.
         """
-        self.seconds = seconds
+        self.seconds: int = seconds
         self.callback = callback
         self.logger = logger
-        self.time_left = seconds
+        self.time_left: float = seconds
         self.timer_thread = None
         self.is_running = False
 
     def _timer_function(self):
         while self.time_left > 0 and self.is_running:
-            self._tryLogger_('Timer started, cicle entered')
+            self._tryLogger_(log='Timer started, cycle entered')
             time.sleep(0.5)
             self.time_left -= 0.5
-
         if self.is_running:
             self.is_running = False
-            if self.callback != None:
-                self._tryLogger_("Timer completed!")
-                self.callback(resolution=None, redraw=True) #callback with bool to know between drawing and
-                                    # redrawing after moved/resized
+            if self.callback is not None:
+                self._tryLogger_(log="Timer completed!")
+                self.callback(redraw=True)  # callback with bool to know between drawing and
+                # redrawing after moved/resized
             else:
                 self._tryLogger_("timer completed silently, no callback was "
-                                "given.")
+                                 "given.")
                 
     def start(self):
         """
@@ -50,7 +51,7 @@ class Timer:
             self.timer_thread = threading.Thread(target=self._timer_function)
             self.timer_thread.start()
         else:
-            self._tryLogger_('Error starting timer, already runnig')
+            self._tryLogger_('Error starting timer, already running')
 
     def stop(self):
         """
@@ -60,7 +61,7 @@ class Timer:
             self.is_running = False
             self._tryLogger_('Timer reset')
         else:
-            self._tryLogger_('Error stopping timer, isn\'t runnig')
+            self._tryLogger_('Error stopping timer, isn\'t running')
 
     def reset(self):
         """
@@ -70,7 +71,7 @@ class Timer:
             self.time_left = self.seconds
             self._tryLogger_('Timer reset')
         else:
-            self._tryLogger_('Error resetting timer, isn\'t runnig')
+            self._tryLogger_('Error resetting timer, isn\'t running')
             
     def _tryLogger_(self, log: str, level: Literal['debug', 'info', 'error'] = 
                     'debug'):
@@ -79,4 +80,4 @@ class Timer:
             log_method(log)
         except Exception as e:
             print(f'Error writing log: {e} '
-                    f'continuing with simple print\n{log}')
+                  f'continuing with simple print\n{log}')

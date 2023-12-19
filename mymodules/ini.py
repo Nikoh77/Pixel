@@ -3,21 +3,22 @@
 
 import configparser
 import os
+from typing import Any
 
-settings={}
+settings: dict[Any, Any] = {}
 
-def iniSettingsCheck(options, config_file, logger):
-    config = configparser.ConfigParser(inline_comment_prefixes=('#', ';'), 
-                    comment_prefixes=('#', ';'), empty_lines_in_values=False, 
-                    allow_no_value=False)
+
+def iniSettingsCheck(options, config_file, logger) -> bool:
+    config = configparser.ConfigParser(inline_comment_prefixes=('#', ';'), comment_prefixes=('#', ';'),
+                                       empty_lines_in_values=False, allow_no_value=False)
     config.read(config_file)
     for section in options:
         if not config.has_section(section):
-            logger.info(f'Needed section {section} does not existin your INI '
+            logger.info(f'Needed section {section} does not exist in your INI '
                         f'file, creating...')
             config.add_section(section)
         for option in options[section]:
-            if config.has_option(section,option):
+            if config.has_option(section, option):
                 logger.info(f'Ok, {section} {option} found.')
             else:
                 config.set(
@@ -32,7 +33,7 @@ def iniSettingsCheck(options, config_file, logger):
         options = config.items(section)
         data = {}
         for option, value in options:
-            if value!=('' and None):
+            if value != ('' and None):
                 data[option] = value
             settings[section] = data
     if settings:
@@ -40,7 +41,8 @@ def iniSettingsCheck(options, config_file, logger):
     else:
         return False
 
-def iniStructCheck(folders, logger):
+
+def iniStructCheck(folders, logger) -> bool:
     for folder in folders:
         if not os.path.exists(folders.get(folder)):
             os.makedirs(folders.get(folder))

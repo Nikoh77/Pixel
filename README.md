@@ -42,9 +42,6 @@ The main goal is to bring this technology to MiSTer fpga and future fpga-based r
 Contributing
 Contributions to Pixel are highly encouraged. Feel free to submit bug reports, feature requests, or pull requests to help enhance this project.
 
-License
-Pixel is open-source software released under the Affero General Public License v3 (AGPL-3.0).
-
 Get ready to rediscover your favorite retro games in a whole new way with Pixel! Enjoy gaming in any language without the language barrier.
 
 ### Please don't open an issue for help or understanding requests, that's what our discord server is for:
